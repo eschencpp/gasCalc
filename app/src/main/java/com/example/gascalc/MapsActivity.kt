@@ -2,8 +2,10 @@ package com.example.gascalc
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.MenuItem
 import android.widget.Toast
-
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -13,21 +15,42 @@ import com.google.android.gms.maps.model.MarkerOptions
 import com.example.gascalc.databinding.ActivityMapsBinding
 import com.google.android.gms.maps.model.Marker
 
+
+
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener{
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
+    lateinit var toggle: ActionBarDrawerToggle
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        toggle = ActionBarDrawerToggle(this,binding.drawerLayout, R.string.open, R.string.close)
+        binding.drawerLayout.addDrawerListener(toggle)
+        toggle.syncState()
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        binding.navView.setNavigationItemSelectedListener {
+            when(it.itemId){
+                R.id.miItem1 -> Toast.makeText(applicationContext, "Clicked item 1", Toast.LENGTH_LONG)
+                    .show()
+            }
+            true
+        }
+
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
+       // val mapFragment = supportFragmentManager
+         //   .findFragmentById(R.id.map) as SupportMapFragment
+       // mapFragment.getMapAsync(this)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if(toggle.onOptionsItemSelected(item)){
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     /**
