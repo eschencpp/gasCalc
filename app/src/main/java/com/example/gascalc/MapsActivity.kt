@@ -1,18 +1,16 @@
 package com.example.gascalc
 
+import android.app.PendingIntent.getActivity
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.drawerlayout.widget.DrawerLayout
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.example.gascalc.databinding.ActivityMapsBinding
+import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.Marker
 
 
@@ -33,15 +31,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.navView.setNavigationItemSelectedListener {
             when(it.itemId){
-                R.id.miItem1 -> Toast.makeText(applicationContext, "Clicked item 1", Toast.LENGTH_LONG)
-                    .show()
+                R.id.miItem1 ->{
+                    supportFragmentManager.popBackStack()
+                }
+
+                R.id.miItem2 ->{ supportFragmentManager.beginTransaction()
+                    .replace(R.id.map, SettingsFragment.newInstance()).addToBackStack("Settings").commit()
+                    supportFragmentManager.beginTransaction().setReorderingAllowed(true)
+                }
             }
             true
         }
 
 
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-       // val mapFragment = supportFragmentManager
+        //val mapFragment = supportFragmentManager
          //   .findFragmentById(R.id.map) as SupportMapFragment
        // mapFragment.getMapAsync(this)
     }
