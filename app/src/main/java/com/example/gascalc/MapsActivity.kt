@@ -1,16 +1,19 @@
 package com.example.gascalc
 
+import android.app.Dialog
 import android.app.PendingIntent.getActivity
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.view.MenuItem
-import android.view.View
+import android.view.*
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.drawerlayout.widget.DrawerLayout
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import com.example.gascalc.databinding.ActivityMapsBinding
+import com.example.gascalc.databinding.FragmentBottomBinding
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.Marker
 
@@ -44,7 +47,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             true
         }
 
+        binding.calcButton.setOnClickListener {
+            val dialog : Dialog = Dialog(this)
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+            dialog.setContentView(R.layout.fragment_bottom)
 
+            dialog.show()
+            dialog.getWindow()!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+            dialog.getWindow()!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            dialog.getWindow()!!.getAttributes().windowAnimations = R.style.DialogAnimation
+            dialog.getWindow()!!.setGravity(Gravity.BOTTOM)
+        }
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         //val mapFragment = supportFragmentManager
          //   .findFragmentById(R.id.map) as SupportMapFragment
