@@ -10,6 +10,8 @@ import android.os.Bundle
 import android.os.Looper
 import android.util.Log
 import android.view.*
+import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import com.google.android.gms.maps.model.LatLng
@@ -26,6 +28,7 @@ import com.karumi.dexter.listener.PermissionDeniedResponse
 import com.karumi.dexter.listener.PermissionGrantedResponse
 import com.karumi.dexter.listener.PermissionRequest;
 import com.karumi.dexter.listener.single.PermissionListener
+import kotlinx.android.synthetic.main.fragment_bottom.*
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "MainActivity"
@@ -39,10 +42,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
     private var currentLocation: Location? = null
-
-
     private var latitude : Double? = null
     private var longitude : Double? = null
+    private lateinit var dialog : Dialog
+    private lateinit var dialog_button : Button
+    private lateinit var start_loc_text : EditText
+    private lateinit var end_loc_text : EditText
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,8 +62,33 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             var latlng : LatLng = LatLng(latitude!!, longitude!!)
             mMap.addMarker(MarkerOptions().position(latlng).title("Your Location"))
             removeLocationUpdateCallbacks()
+
+            //Transfer data to fragment
+            var bundle : Bundle = Bundle()
+            bundle.putDouble("longitude",longitude!!)
+            bundle.putDouble("longitude",latitude!!)
+            val bottomFragment : BottomFragment = BottomFragment()
+            bottomFragment.arguments = bundle
+
         }
 
+        //Bottom sliding menu
+        binding.calcButton.setOnClickListener {
+            setDialog()
+        }
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        val mapFragment = supportFragmentManager
+            .findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+
+        navMenu()
+        checkPermissions()
+        initLocRequest()
+        getLocation()
+    }
+
+    //Create navigation menu on toolbar
+    fun navMenu(){
         //Nav Menu
         toggle = ActionBarDrawerToggle(this,binding.drawerLayout, R.string.open, R.string.close)
         binding.drawerLayout.addDrawerListener(toggle)
@@ -76,33 +107,41 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
             true
         }
-
-        //Bottom sliding menu
-        binding.calcButton.setOnClickListener {
-            val dialog : Dialog = Dialog(this)
-            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-            dialog.setContentView(R.layout.fragment_bottom)
-
-            dialog.show()
-            dialog.getWindow()!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-            dialog.getWindow()!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            dialog.getWindow()!!.getAttributes().windowAnimations = R.style.DialogAnimation
-            dialog.getWindow()!!.setGravity(Gravity.BOTTOM)
-        }
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-
-        checkPermissions()
-        initLocRequest()
-        getLocation()
-        //latitude?.let { longitude?.let { it1 -> goToLocation(it, it1) } }
     }
 
+    fun setDialog(){
+        dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.fragment_bottom)
+        dialog_button = dialog.findViewById(R.id.cal_button)
+        start_loc_text = dialog.findViewById(R.id.editTextStartLocation)
+        end_loc_text  = dialog.findViewById(R.id.editTextEndLocation)
+
+        start_loc_text.setOnFocusChangeListener{ _, hasFocus ->
+            if (hasFocus)
+                start_loc_text.setText("")
+            else
+                start_loc_text.setText("Start Location")
+        }
+        end_loc_text.setOnFocusChangeListener(){_, hasFocus ->
+            if (hasFocus)
+                end_loc_text.setText("")
+            else
+                end_loc_text.setText("Destination")
+        }
+        dialog_button.setOnClickListener {
+
+        }
+        dialog.show()
+        dialog.getWindow()!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        dialog.getWindow()!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog.getWindow()!!.getAttributes().windowAnimations = R.style.DialogAnimation
+        dialog.getWindow()!!.setGravity(Gravity.BOTTOM)
+    }
+
+    //Get users location
     fun initLocRequest(){
         locationRequest = LocationRequest().apply {
-
             interval = TimeUnit.SECONDS.toMillis(60)
             fastestInterval = TimeUnit.SECONDS.toMillis(30)
             maxWaitTime = TimeUnit.MINUTES.toMillis(2)
@@ -110,6 +149,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
     }
 
+    //Set the users location (latitude, longitude)
     @SuppressLint("MissingPermission")
     private fun getLocation(){
         locationCallback = object : LocationCallback() {
@@ -131,6 +171,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         )
     }
 
+    //Move map camera to user location
     private fun goToLocation(lat:Double, long:Double){
         val latlng :LatLng = LatLng(lat,long)
         val cameraupdate : CameraUpdate = CameraUpdateFactory.newLatLngZoom(latlng,14F)

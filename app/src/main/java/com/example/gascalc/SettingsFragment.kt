@@ -57,6 +57,9 @@ class SettingsFragment : Fragment() {
     ): View? {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         val view = binding.root
+
+
+
         binding.saveButton.setOnClickListener{
             lifecycleScope.launch{
                 save(
