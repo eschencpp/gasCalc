@@ -33,8 +33,6 @@ class SettingsFragment : Fragment() {
         }
         dataStore = context?.createDataStore(name = "settings")!!
 
-
-
     }
 
 
