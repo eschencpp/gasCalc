@@ -1,40 +1,49 @@
 package com.example.gascalc
 
+
 import android.annotation.SuppressLint
 import android.app.Dialog
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.location.Location
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
-import android.view.*
+import android.view.Gravity
+import android.view.MenuItem
+import android.view.ViewGroup
+import android.view.Window
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
+import androidx.appcompat.app.AppCompatActivity
 import com.example.gascalc.databinding.ActivityMapsBinding
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.api.GoogleApiClient
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.*
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
-import com.karumi.dexter.Dexter;
-import com.karumi.dexter.PermissionToken;
+import com.google.android.gms.maps.model.MarkerOptions
+import com.karumi.dexter.Dexter
+import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionDeniedResponse
 import com.karumi.dexter.listener.PermissionGrantedResponse
-import com.karumi.dexter.listener.PermissionRequest;
+import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.single.PermissionListener
-import kotlinx.android.synthetic.main.fragment_bottom.*
+import okhttp3.*
+import org.json.JSONArray
+import org.json.JSONObject
+import retrofit2.Retrofit
+import retrofit2.converter.scalars.ScalarsConverterFactory
+import java.io.IOException
+import java.net.URI
 import java.util.concurrent.TimeUnit
+
 
 private const val TAG = "MainActivity"
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarkerClickListener{
-
+    val API_KEY = "AIzaSyCcuVvf_deMMVz4KI5Td0pW24-rCglJnwo"
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
     lateinit var toggle: ActionBarDrawerToggle
@@ -48,6 +57,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var dialog_button : Button
     private lateinit var start_loc_text : EditText
     private lateinit var end_loc_text : EditText
+    private val client = OkHttpClient()
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,6 +140,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 end_loc_text.setText("Destination")
         }
         dialog_button.setOnClickListener {
+            a()
 
         }
         dialog.show()
@@ -203,8 +214,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }).check()
     }
 
-
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if(toggle.onOptionsItemSelected(item)){
             return true
@@ -245,6 +254,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
         }
     }
+    fun a(){
+    val origin = "40.6655101%2C-73.89188969999998"
+    val dest = "40.659569%2C-73.933783%7C40"
 
+    val urlMap = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${dest}&units=metric&key=${API_KEY}"
+    val request = Request.Builder()
+        .url(urlMap)
+        .build()
+    Log.d("",urlMap)
+    client.newCall(request).enqueue(object : Callback {
+        override fun onFailure(call: Call, e: IOException) {
+            e.printStackTrace()
+        }
+        override fun onResponse(call: Call, response: Response) {
+            response.use {
+                if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                var json = JSONObject(response.body!!.string())
+                val rows = json["rows"] as JSONArray
+                val elements = rows[0] as JSONObject
+                val distance = elements["elements"] as JSONArray
+                val distanceArray = distance[0] as JSONObject
+                val distanceData = distanceArray["distance"] as JSONObject
+
+                val dist = distanceData["value"].toString().toDouble()
+                val distKm = (dist/1000)
+                Log.d("DA", dist.toString() )
+
+            }
+        }
+    })
+}
 
 }
