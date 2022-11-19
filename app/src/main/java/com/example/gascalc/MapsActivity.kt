@@ -38,6 +38,15 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.io.IOException
 import java.net.URI
 import java.util.concurrent.TimeUnit
+import android.location.Geocoder
+import android.location.Address
+import android.view.inputmethod.EditorInfo
+import java.util.*
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.google.android.libraries.places.api.Places
+import kotlinx.coroutines.delay
+import okhttp3.internal.format
 
 
 private const val TAG = "MainActivity"
@@ -51,13 +60,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
     private var currentLocation: Location? = null
-    private var latitude : Double? = null
-    private var longitude : Double? = null
+    private var startLatitude : Double? = null
+    private var startLongitude : Double? = null
+    private var destLatitude : Double? = null
+    private var destLongitude : Double? = null
     private lateinit var dialog : Dialog
     private lateinit var dialog_button : Button
     private lateinit var start_loc_text : EditText
     private lateinit var end_loc_text : EditText
     private val client = OkHttpClient()
+    private var startAddress : String = "Start Location"
+    private var destAddress : String = ""
+    private var templatitude : Double? = null
+    private var templongitude : Double? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,18 +83,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
         binding.locationFab.setOnClickListener{
             getLocation()
-            latitude?.let { it1 -> longitude?.let { it2 -> goToLocation(it1, it2) } }
-            var latlng : LatLng = LatLng(latitude!!, longitude!!)
+            startLatitude?.let { it1 -> startLongitude?.let { it2 -> goToLocation(it1, it2) } }
+            var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
             mMap.addMarker(MarkerOptions().position(latlng).title("Your Location"))
             removeLocationUpdateCallbacks()
 
             //Transfer data to fragment
             var bundle : Bundle = Bundle()
-            bundle.putDouble("longitude",longitude!!)
-            bundle.putDouble("longitude",latitude!!)
+            bundle.putDouble("longitude",startLongitude!!)
+            bundle.putDouble("longitude",startLatitude!!)
             val bottomFragment : BottomFragment = BottomFragment()
             bottomFragment.arguments = bundle
 
+            lifecycleScope.launch{
+                toLocation("40.714224","-73.961452", 0)
+                toLatLng("7993 Windchime St")
+            }
         }
 
         //Bottom sliding menu
@@ -120,18 +139,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     fun setDialog(){
+        Log.d("",startAddress)
         dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
         dialog.setContentView(R.layout.fragment_bottom)
         dialog_button = dialog.findViewById(R.id.cal_button)
         start_loc_text = dialog.findViewById(R.id.editTextStartLocation)
         end_loc_text  = dialog.findViewById(R.id.editTextEndLocation)
-
+        start_loc_text.setText(startAddress)
         start_loc_text.setOnFocusChangeListener{ _, hasFocus ->
             if (hasFocus)
                 start_loc_text.setText("")
             else
-                start_loc_text.setText("Start Location")
+                start_loc_text.setText(startAddress)
         }
         end_loc_text.setOnFocusChangeListener(){_, hasFocus ->
             if (hasFocus)
@@ -139,9 +159,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             else
                 end_loc_text.setText("Destination")
         }
+        end_loc_text.setOnEditorActionListener { v, actionId, event ->
+            if(actionId == EditorInfo.IME_ACTION_DONE){
+                toLatLng(end_loc_text.text.toString())
+                true
+            } else {
+                false
+            }
+        }
         dialog_button.setOnClickListener {
-            a()
-
+            getDistance(startLatitude!!,startLongitude!!,destLatitude!!,destLongitude!!)
         }
         dialog.show()
         dialog.getWindow()!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -168,8 +195,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 super.onLocationResult(locationResult)
                 locationResult?.lastLocation?.let {
                     currentLocation = locationResult.lastLocation
-                    latitude = currentLocation?.latitude
-                    longitude = currentLocation?.longitude
+                    startLatitude = currentLocation?.latitude
+                    startLongitude = currentLocation?.longitude
                 } ?: run {
                     Log.d("Main", "Location information isn't available.")
                 }
@@ -254,37 +281,110 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
         }
     }
-    fun a(){
-    val origin = "40.6655101%2C-73.89188969999998"
-    val dest = "40.659569%2C-73.933783%7C40"
 
-    val urlMap = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${dest}&units=metric&key=${API_KEY}"
-    val request = Request.Builder()
+    //Get API call to find distance
+    fun getDistance(startLat: Double,startLong: Double,endLat: Double,endLong: Double,){
+        var startlatlong = startLat.toString()+","+startLong.toString()
+        val dest = endLat.toString() + "," + endLong.toString()
+
+        val urlMap = "https://maps.googleapis.com/maps/api/distancematrix/json?origins=${startlatlong}" +
+                "&destinations=${dest}&units=metric&key=${API_KEY}"
+        val request = Request.Builder()
         .url(urlMap)
         .build()
-    Log.d("",urlMap)
-    client.newCall(request).enqueue(object : Callback {
-        override fun onFailure(call: Call, e: IOException) {
-            e.printStackTrace()
-        }
-        override fun onResponse(call: Call, response: Response) {
-            response.use {
-                if (!response.isSuccessful) throw IOException("Unexpected code $response")
-
-                var json = JSONObject(response.body!!.string())
-                val rows = json["rows"] as JSONArray
-                val elements = rows[0] as JSONObject
-                val distance = elements["elements"] as JSONArray
-                val distanceArray = distance[0] as JSONObject
-                val distanceData = distanceArray["distance"] as JSONObject
-
-                val dist = distanceData["value"].toString().toDouble()
-                val distKm = (dist/1000)
-                Log.d("DA", dist.toString() )
-
+        Log.d("",urlMap)
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
             }
-        }
-    })
-}
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                    var json = JSONObject(response.body!!.string())
+                    val rows = json["rows"] as JSONArray
+                    val elements = rows[0] as JSONObject
+                    val distance = elements["elements"] as JSONArray
+                    val distanceArray = distance[0] as JSONObject
+                    val distanceData = distanceArray["distance"] as JSONObject
+
+                    val dist = distanceData["value"].toString().toDouble()
+                    val distMile = (dist/1000)* 0.62137
+                    Log.d("Dist", distMile.toString() )
+                }
+            }
+        })
+
+    }
+    //Method to geocode LatLng to Location Name
+    suspend fun toLocation(lat: String, long: String, flag: Int) {
+        var formatString = ""
+        val latlng = lat + "," + long
+        val urlMap = "https://maps.googleapis.com/maps/api/geocode/json?latlng=${latlng}" +
+                "&key=${API_KEY}"
+        val request = Request.Builder()
+            .url(urlMap)
+            .build()
+        Log.d("apilink",urlMap)
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+            }
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                    var json = JSONObject(response.body!!.string())
+                    val results = json["results"] as JSONArray
+                    val resultsObj = results[0] as JSONObject
+                    formatString = resultsObj["formatted_address"] as String
+
+                    this@MapsActivity.runOnUiThread(java.lang.Runnable {
+                        if(flag == 1){
+                            destAddress = formatString
+                        }else {
+                            startAddress = formatString
+                        }
+                    })
+                    Log.d("OnResponse", formatString )
+                }
+            }
+        })
+    }
+
+    //Method to geocode from LocationName to LatLng
+    fun toLatLng(address : String){
+        val formatAddress = address.replace(" ","%20")
+        val urlMap = "https://maps.googleapis.com/maps/api/geocode/json?address=${formatAddress}" +
+                "&key=${API_KEY}"
+        val request = Request.Builder()
+            .url(urlMap)
+            .build()
+        Log.d("apilink",urlMap)
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                e.printStackTrace()
+            }
+            override fun onResponse(call: Call, response: Response) {
+                response.use {
+                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
+
+                    var json = JSONObject(response.body!!.string())
+                    val results = json["results"] as JSONArray
+                    val resultObj = results[0] as JSONObject
+                    val geometry = resultObj["geometry"] as JSONObject
+                    val locationObj = geometry["location"] as JSONObject
+                    val lati = locationObj["lat"] as Double
+                    val longi = locationObj["lng"] as Double
+
+                    this@MapsActivity.runOnUiThread(java.lang.Runnable {
+                        destLatitude = lati
+                        destLongitude = longi
+                        Log.d("LatLng",destLatitude.toString() +", " + destLongitude.toString())
+                    })
+                }
+            }
+        })
+    }
 
 }
