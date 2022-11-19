@@ -9,10 +9,6 @@ import android.location.Location
 import android.os.Bundle
 import android.os.Looper
 import android.util.Log
-import android.view.Gravity
-import android.view.MenuItem
-import android.view.ViewGroup
-import android.view.Window
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
@@ -40,13 +36,16 @@ import java.net.URI
 import java.util.concurrent.TimeUnit
 import android.location.Geocoder
 import android.location.Address
+import android.view.*
 import android.view.inputmethod.EditorInfo
+import android.widget.TextView
 import java.util.*
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.google.android.libraries.places.api.Places
 import kotlinx.coroutines.delay
 import okhttp3.internal.format
+import kotlin.math.roundToInt
 
 
 private const val TAG = "MainActivity"
@@ -68,12 +67,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var dialog_button : Button
     private lateinit var start_loc_text : EditText
     private lateinit var end_loc_text : EditText
+    private lateinit var distanceT : TextView
+    private lateinit var costT : TextView
     private val client = OkHttpClient()
-    private var startAddress : String = "Start Location"
-    private var destAddress : String = ""
-    private var templatitude : Double? = null
-    private var templongitude : Double? = null
-
+    private var startAddress : String = "Your Location"
+    private var destAddress : String = "Destination"
+    private var distancee : Double? = null
+    private var gasPrice : Double? = null
+    private var mpg : Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -88,16 +89,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             mMap.addMarker(MarkerOptions().position(latlng).title("Your Location"))
             removeLocationUpdateCallbacks()
 
-            //Transfer data to fragment
-            var bundle : Bundle = Bundle()
-            bundle.putDouble("longitude",startLongitude!!)
-            bundle.putDouble("longitude",startLatitude!!)
-            val bottomFragment : BottomFragment = BottomFragment()
-            bottomFragment.arguments = bundle
-
             lifecycleScope.launch{
-                toLocation("40.714224","-73.961452", 0)
-                toLatLng("7993 Windchime St")
+                toLocation(startLatitude.toString(),startLongitude.toString(),0)
             }
         }
 
@@ -146,29 +139,57 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         dialog_button = dialog.findViewById(R.id.cal_button)
         start_loc_text = dialog.findViewById(R.id.editTextStartLocation)
         end_loc_text  = dialog.findViewById(R.id.editTextEndLocation)
+        distanceT  = dialog.findViewById(R.id.distance_text)
+        costT = dialog.findViewById(R.id.cost_text)
         start_loc_text.setText(startAddress)
+        end_loc_text.setText(destAddress)
         start_loc_text.setOnFocusChangeListener{ _, hasFocus ->
             if (hasFocus)
                 start_loc_text.setText("")
             else
                 start_loc_text.setText(startAddress)
+
         }
+
+        start_loc_text.setOnEditorActionListener { v, actionId, event ->
+            if(actionId == EditorInfo.IME_ACTION_NEXT){
+                Log.d("Done","Action Done")
+                startAddress = start_loc_text.text.toString()
+                start_loc_text.setText(startAddress)
+                lifecycleScope.launch{
+                    toLatLng(start_loc_text.text.toString(),0)
+                }
+                true
+            } else {
+                false
+            }
+        }
+
+
         end_loc_text.setOnFocusChangeListener(){_, hasFocus ->
             if (hasFocus)
                 end_loc_text.setText("")
             else
-                end_loc_text.setText("Destination")
+                end_loc_text.setText(destAddress)
         }
+
         end_loc_text.setOnEditorActionListener { v, actionId, event ->
             if(actionId == EditorInfo.IME_ACTION_DONE){
-                toLatLng(end_loc_text.text.toString())
+                destAddress = end_loc_text.text.toString()
+                end_loc_text.setText(destAddress)
+                lifecycleScope.launch{
+                    toLatLng(end_loc_text.text.toString(),1)
+                }
                 true
             } else {
                 false
             }
         }
         dialog_button.setOnClickListener {
-            getDistance(startLatitude!!,startLongitude!!,destLatitude!!,destLongitude!!)
+            if(startLatitude != null && destLongitude != null &&
+                destLatitude != null && destLongitude != null) {
+                getDistance(startLatitude!!, startLongitude!!, destLatitude!!, destLongitude!!)
+            }
         }
         dialog.show()
         dialog.getWindow()!!.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -309,8 +330,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     val distanceData = distanceArray["distance"] as JSONObject
 
                     val dist = distanceData["value"].toString().toDouble()
-                    val distMile = (dist/1000)* 0.62137
+                    val distMile : Double = (dist/1000)* 0.62137
                     Log.d("Dist", distMile.toString() )
+                    this@MapsActivity.runOnUiThread(java.lang.Runnable {
+                        distancee = ((distMile*10).roundToInt().toDouble())/10
+                        distanceT.setText(distancee.toString() +" Miles")
+                        val cost = ((distancee!!/19 * 5)*10).roundToInt().toDouble()/10
+                        costT.setText(cost.toString())
+                    })
                 }
             }
         })
@@ -353,7 +380,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     //Method to geocode from LocationName to LatLng
-    fun toLatLng(address : String){
+    suspend fun toLatLng(address : String, flag : Int){
         val formatAddress = address.replace(" ","%20")
         val urlMap = "https://maps.googleapis.com/maps/api/geocode/json?address=${formatAddress}" +
                 "&key=${API_KEY}"
@@ -371,6 +398,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
                     var json = JSONObject(response.body!!.string())
                     val results = json["results"] as JSONArray
+                    if(results.length() == 0){
+                        Log.d("Not found","Not found")
+                        return
+                    }
                     val resultObj = results[0] as JSONObject
                     val geometry = resultObj["geometry"] as JSONObject
                     val locationObj = geometry["location"] as JSONObject
@@ -378,9 +409,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     val longi = locationObj["lng"] as Double
 
                     this@MapsActivity.runOnUiThread(java.lang.Runnable {
-                        destLatitude = lati
-                        destLongitude = longi
-                        Log.d("LatLng",destLatitude.toString() +", " + destLongitude.toString())
+                        if(flag == 1) {
+                            destLatitude = lati
+                            destLongitude = longi
+                            Log.d(
+                                "LatLng",
+                                destLatitude.toString() + ", " + destLongitude.toString()
+                            )
+                        } else{
+                            startLatitude = lati
+                            startLongitude = longi
+                        }
                     })
                 }
             }

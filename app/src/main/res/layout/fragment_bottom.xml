@@ -47,6 +47,7 @@
                 android:layout_marginEnd="24dp"
                 android:layout_weight="1"
                 android:ems="10"
+                android:maxLines="1"
                 android:inputType="textPersonName"
                 android:text="@string/startlocation"
                 app:layout_constraintEnd_toEndOf="parent"
@@ -124,6 +125,7 @@
             android:src="@drawable/ic_baseline_drive_eta_24" />
 
         <TextView
+            android:id="@+id/distance_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="30dp"
@@ -149,6 +151,7 @@
             android:src="@drawable/ic_baseline_attach_money_24" />
 
         <TextView
+            android:id="@+id/cost_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="30dp"

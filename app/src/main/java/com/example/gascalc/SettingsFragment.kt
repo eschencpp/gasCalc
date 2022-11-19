@@ -58,7 +58,19 @@ class SettingsFragment : Fragment() {
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         val view = binding.root
 
+        binding.enterMPG.setOnFocusChangeListener(){_, hasFocus ->
+            if (hasFocus)
+                binding.enterMPG.setText("")
+            else
+                binding.enterMPG.setText("Enter MPG")
+        }
 
+        binding.gasPriceText.setOnFocusChangeListener(){_, hasFocus ->
+            if (hasFocus)
+                binding.gasPriceText.setText("")
+            else
+                binding.gasPriceText.setText("Gas Price")
+        }
 
         binding.saveButton.setOnClickListener{
             lifecycleScope.launch{
@@ -72,11 +84,14 @@ class SettingsFragment : Fragment() {
 
         }
 
-        binding.readMPGButton.setOnClickListener {
+        binding.gasPriceButton.setOnClickListener {
             lifecycleScope.launch{
-                val x  = read("mpg")
-                Log.d("TAG", "The value is $x")
-                //Toast.makeText(activity.applicationContext,"Your MPG is:",Toast.LENGTH_LONG)
+                save(
+                    "gas",
+                    binding.gasPriceText.text.toString()
+                )
+                val gas = read("gas")
+                Toast.makeText(activity,"Gas Price set to: $gas",Toast.LENGTH_LONG).show()
             }
 
         }

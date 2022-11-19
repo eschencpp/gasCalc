@@ -33,17 +33,17 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/readMPG_button"
+        android:id="@+id/gasPrice_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:layout_marginEnd="24dp"
-        android:text="Read"
+        android:text="Save"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/save_button" />
 
     <EditText
-        android:id="@+id/readMPG_text"
+        android:id="@+id/gasPrice_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
@@ -51,8 +51,8 @@
         android:ems="10"
         android:inputType="textPersonName"
         android:minHeight="48dp"
-        android:text="MPG"
-        app:layout_constraintEnd_toStartOf="@+id/readMPG_button"
+        android:text="Gas Price"
+        app:layout_constraintEnd_toStartOf="@+id/gasPrice_button"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/enterMPG" />
 
