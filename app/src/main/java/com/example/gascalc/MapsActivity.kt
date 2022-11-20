@@ -39,6 +39,7 @@ import android.location.Address
 import android.view.*
 import android.view.inputmethod.EditorInfo
 import android.widget.TextView
+import androidx.lifecycle.ViewModelProvider
 import java.util.*
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
@@ -73,22 +74,48 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private var startAddress : String = "Your Location"
     private var destAddress : String = "Destination"
     private var distancee : Double? = null
-    private var gasPrice : Double? = null
-    private var mpg : Int? = null
+    private var gasPrice : String? = null
+    private var mpg : String? = null
+    //Viewmodel
+    private lateinit var viewmodel : sharedViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        //Viewmodel
+        viewmodel = ViewModelProvider(this)[sharedViewModel::class.java]
+        if(viewmodel.getMPG() != null){
+            mpg = viewmodel.getMPG().toString()
+        }
+        if(viewmodel.getGasPrice().value != null){
+            gasPrice = viewmodel.getGasPrice().value
+            Log.d("SetGas",gasPrice!!)
+        }
+        //Set Observers to update MPG/Gas Price if changed
+        viewmodel.getMPG().observe(this) { item: String? ->
+            mpg = item
+            Log.d("observer", mpg!!)
+        }
+        viewmodel.getGasPrice().observe(this) { item: String? ->
+            gasPrice = item
+            val x = gasPrice.toString().toDouble()
+            Log.d("gasobserver", x.toString())
+        }
 
         binding.locationFab.setOnClickListener{
             getLocation()
             startLatitude?.let { it1 -> startLongitude?.let { it2 -> goToLocation(it1, it2) } }
-            var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
-            mMap.addMarker(MarkerOptions().position(latlng).title("Your Location"))
+            try {
+                var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
+                mMap.addMarker(MarkerOptions().position(latlng).title("Your Location"))
+            }catch (e:NullPointerException){
+                Log.d("FAB Error", "Try again")
+            }
             removeLocationUpdateCallbacks()
 
+            //Set start address to user location
             lifecycleScope.launch{
                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
             }
@@ -122,9 +149,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     supportFragmentManager.popBackStack()
                 }
 
-                R.id.miItem2 ->{ supportFragmentManager.beginTransaction()
-                    .replace(R.id.map, SettingsFragment.newInstance()).addToBackStack("Settings").commit()
-                    supportFragmentManager.beginTransaction().setReorderingAllowed(true)
+                R.id.miItem2 ->{
+                    var x = supportFragmentManager.findFragmentByTag("Settings")
+                    if (x != null) {
+                        supportFragmentManager.beginTransaction()
+                            .show(x)
+                    }
+                    Log.d("fragmpop", x.toString())
+                    if (x == null) {
+                        supportFragmentManager.beginTransaction()
+                            .replace(R.id.map, SettingsFragment.newInstance())
+                            .addToBackStack("Settings").commit()
+                        supportFragmentManager.beginTransaction().setReorderingAllowed(true)
+                    }
                 }
             }
             true
@@ -335,7 +372,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     this@MapsActivity.runOnUiThread(java.lang.Runnable {
                         distancee = ((distMile*10).roundToInt().toDouble())/10
                         distanceT.setText(distancee.toString() +" Miles")
-                        val cost = ((distancee!!/19 * 5)*10).roundToInt().toDouble()/10
+                        val cost = ((distancee!!/(mpg?.toDouble()!!) * gasPrice?.toDouble()!!)*100).roundToInt().toDouble()/100
                         costT.setText(cost.toString())
                     })
                 }
@@ -425,5 +462,4 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
         })
     }
-
 }
