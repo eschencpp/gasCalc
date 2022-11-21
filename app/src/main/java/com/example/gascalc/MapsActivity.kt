@@ -52,6 +52,7 @@ import okhttp3.internal.format
 import kotlin.math.roundToInt
 import android.view.View
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -93,6 +94,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var dataStore: DataStore<Preferences>
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         super.onCreate(savedInstanceState)
         dataStore = createDataStore(name = "data")!!
         binding = ActivityMapsBinding.inflate(layoutInflater)
