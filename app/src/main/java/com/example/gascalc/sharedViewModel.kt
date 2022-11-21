@@ -1,28 +1,37 @@
 package com.example.gascalc
 
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 
-class sharedViewModel : ViewModel() {
+class sharedViewModel(val state : SavedStateHandle) : ViewModel() {
 
-    private val selectedItem : MutableLiveData<String> =  MutableLiveData<String>()
-    private val gas : MutableLiveData<String> =  MutableLiveData<String>()
+    private var MPG : MutableLiveData<String> =  state.getLiveData("mpg","")
+    private var gas : MutableLiveData<String> =  state.getLiveData("gas","")
 
-    public fun setMPG(item : String){
-        selectedItem.value = item
+    fun setMPG(item : String){
+        state.set("mpg", item)
+        MPG.value = item
     }
 
     public fun getMPG() : LiveData<String>{
-        return selectedItem;
+        return MPG;
     }
 
     public fun setGasPrice(item : String){
+        state.set("gas", item)
         gas.value = item
     }
 
     public fun getGasPrice() : LiveData<String>{
         return gas;
+    }
+
+    fun saveState(){
+        MPG.value = state["mpg"]
+        gas.value = state["gas"]
     }
 
 }

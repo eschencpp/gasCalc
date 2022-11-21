@@ -79,6 +79,7 @@ class SettingsFragment : Fragment() {
                     binding.enterMPG.text.toString()
                 )
                 val Tmpg = read("mpg")
+
                 viewmodel.setMPG(read("mpg")!!)
                 Toast.makeText(activity,"Your MPG is: $Tmpg",Toast.LENGTH_LONG).show()
             }

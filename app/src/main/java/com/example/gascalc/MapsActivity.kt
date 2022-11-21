@@ -3,6 +3,7 @@ package com.example.gascalc
 
 import android.annotation.SuppressLint
 import android.app.Dialog
+import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.location.Location
@@ -36,9 +37,11 @@ import java.net.URI
 import java.util.concurrent.TimeUnit
 import android.location.Geocoder
 import android.location.Address
+import android.util.AttributeSet
 import android.view.*
 import android.view.inputmethod.EditorInfo
 import android.widget.TextView
+import androidx.lifecycle.SavedStateViewModelFactory
 import androidx.lifecycle.ViewModelProvider
 import java.util.*
 import androidx.lifecycle.lifecycleScope
@@ -47,6 +50,15 @@ import com.google.android.libraries.places.api.Places
 import kotlinx.coroutines.delay
 import okhttp3.internal.format
 import kotlin.math.roundToInt
+import android.view.View
+import androidx.activity.viewModels
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.preferencesKey
+import androidx.datastore.preferences.createDataStore
+import androidx.fragment.app.FragmentManager
+import kotlinx.coroutines.flow.first
 
 
 private const val TAG = "MainActivity"
@@ -77,31 +89,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private var gasPrice : String? = null
     private var mpg : String? = null
     //Viewmodel
-    private lateinit var viewmodel : sharedViewModel
+    private val viewmodel: sharedViewModel by viewModels()
+    private lateinit var dataStore: DataStore<Preferences>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        dataStore = createDataStore(name = "data")!!
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-        //Viewmodel
-        viewmodel = ViewModelProvider(this)[sharedViewModel::class.java]
-        if(viewmodel.getMPG() != null){
-            mpg = viewmodel.getMPG().toString()
-        }
-        if(viewmodel.getGasPrice().value != null){
-            gasPrice = viewmodel.getGasPrice().value
-            Log.d("SetGas",gasPrice!!)
+        //Update variables to saved state using datastore
+        lifecycleScope.launch(){
+            if(read("mpg") != null){
+                mpg = read("mpg")
+            }
+            if(read("gas") != null){
+                gasPrice = read("gas")
+            }
         }
         //Set Observers to update MPG/Gas Price if changed
         viewmodel.getMPG().observe(this) { item: String? ->
             mpg = item
+            lifecycleScope.launch{
+                save("mpg", mpg!!)
+            }
             Log.d("observer", mpg!!)
         }
         viewmodel.getGasPrice().observe(this) { item: String? ->
             gasPrice = item
-            val x = gasPrice.toString().toDouble()
-            Log.d("gasobserver", x.toString())
+            lifecycleScope.launch{
+                save("gas", gasPrice!!)
+            }
         }
 
         binding.locationFab.setOnClickListener{
@@ -113,7 +131,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }catch (e:NullPointerException){
                 Log.d("FAB Error", "Try again")
             }
-            removeLocationUpdateCallbacks()
 
             //Set start address to user location
             lifecycleScope.launch{
@@ -136,6 +153,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         getLocation()
     }
 
+    override fun onCreateView(name: String, context: Context, attrs: AttributeSet): View? {
+        return super.onCreateView(name, context, attrs)
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+    }
     //Create navigation menu on toolbar
     fun navMenu(){
         //Nav Menu
@@ -223,6 +244,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
         }
         dialog_button.setOnClickListener {
+            Log.d("MPGGAS", mpg+gasPrice)
             if(startLatitude != null && destLongitude != null &&
                 destLatitude != null && destLongitude != null) {
                 getDistance(startLatitude!!, startLongitude!!, destLatitude!!, destLongitude!!)
@@ -462,4 +484,27 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
         })
     }
+
+    override fun onSaveInstanceState(savedInstanceState: Bundle) {
+        super.onSaveInstanceState(savedInstanceState)
+        Log.i(TAG, "onSaveInstanceState")
+        removeLocationUpdateCallbacks()
+        savedInstanceState.putString("mpg", mpg)
+        savedInstanceState.putString("gas", gasPrice)
+
+    }
+
+    private suspend fun save(key : String, value:String){
+        val dataStoreKey = preferencesKey<String>(key)
+        dataStore.edit { settings ->
+            settings[dataStoreKey] = value
+        }
+    }
+
+    private suspend fun read(key : String): String?{
+        val dataStoreKey = preferencesKey<String>(key)
+        val preferences = dataStore.data.first()
+        return preferences[dataStoreKey]
+    }
+
 }
