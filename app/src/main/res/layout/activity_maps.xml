@@ -20,23 +20,31 @@
             android:layout_height="match_parent"
             tools:context=".MapsActivity" />
 
-        <Button
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/calc_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="24dp"
-            android:layout_marginBottom="24dp"
-            android:text="Calculate"
-            android:elevation="10dp"
+            android:layout_marginBottom="44dp"
+            android:background="#40BD45"
+            android:backgroundTint="#40BD45"
+            app:backgroundTint="#40BD45"
+            app:tint="#FFFFFF"
+            android:clickable="true"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:srcCompat="@drawable/ic_baseline_local_gas_station_24" />
 
         <com.google.android.material.floatingactionbutton.FloatingActionButton
             android:id="@+id/location_fab"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="24dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="24dp"
+            android:background="#FFFFFF"
+            android:backgroundTint="#FFFFFF"
+            app:backgroundTint="#FFFFFF"
+            app:tint="#FF1744"
             android:clickable="true"
             app:layout_constraintBottom_toTopOf="@+id/calc_button"
             app:layout_constraintEnd_toEndOf="parent"
@@ -51,6 +59,7 @@
         android:layout_height="match_parent"
         app:headerLayout="@layout/nav_header"
         app:menu="@menu/nav_drawer_menu"
+
         android:layout_gravity="start"
         android:fitsSystemWindows="true"/>
 

@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.get
 import com.example.gascalc.databinding.FragmentSettingsBinding
 import androidx.lifecycle.lifecycleScope
+import kotlinx.android.synthetic.main.fragment_settings.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -40,15 +41,13 @@ class SettingsFragment : Fragment() {
         lifecycleScope.launch(){
             if(read("mpg") != null){
                 gMPG = read("mpg")
-                binding.enterMPG.setText(read("mpg"))
+                binding.enterMPG.setText(read("mpg") + "  MPG")
             }
             if(read("gas") != null){
                 gasPrice = read("gas")
-                binding.gasPriceText.setText(read("gas"))
+                binding.gasPriceText.setText(read("gas" ) + "  $/gallon")
             }
         }
-
-
     }
 
     private suspend fun save(key : String, value:String){
@@ -72,6 +71,21 @@ class SettingsFragment : Fragment() {
         viewmodel = ViewModelProvider(requireActivity()).get(sharedViewModel::class.java)
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         val view = binding.root
+
+        binding.enterMPG.setOnFocusChangeListener{ _, hasFocus ->
+            if (hasFocus)
+                enterMPG.setText("")
+            else
+                enterMPG.setText(gMPG+"  MPG")
+        }
+
+        binding.gasPriceText.setOnFocusChangeListener{ _, hasFocus ->
+            if (hasFocus)
+                binding.gasPriceText.setText("")
+            else
+                binding.gasPriceText.setText(gasPrice+"  $/gallon")
+        }
+
         binding.saveMPGButton.setOnClickListener{
             lifecycleScope.launch{
                 save(

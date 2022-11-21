@@ -97,7 +97,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         dataStore = createDataStore(name = "data")!!
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+
         //Update variables to saved state using datastore
         lifecycleScope.launch(){
             if(read("mpg") != null){
@@ -107,6 +107,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 gasPrice = read("gas")
             }
         }
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
         //Set Observers to update MPG/Gas Price if changed
         viewmodel.getMPG().observe(this) { item: String? ->
             mpg = item
@@ -124,13 +125,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
         binding.locationFab.setOnClickListener{
             getLocation()
-            startLatitude?.let { it1 -> startLongitude?.let { it2 -> goToLocation(it1, it2) } }
-            try {
-                var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
-                mMap.addMarker(MarkerOptions().position(latlng).title("Your Location"))
-            }catch (e:NullPointerException){
-                Log.d("FAB Error", "Try again")
-            }
 
             //Set start address to user location
             lifecycleScope.launch{
@@ -155,7 +149,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
     override fun onCreateView(name: String, context: Context, attrs: AttributeSet): View? {
         return super.onCreateView(name, context, attrs)
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
     }
     //Create navigation menu on toolbar
     fun navMenu(){
@@ -262,14 +255,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         locationRequest = LocationRequest().apply {
             interval = TimeUnit.SECONDS.toMillis(60)
             fastestInterval = TimeUnit.SECONDS.toMillis(30)
-            maxWaitTime = TimeUnit.MINUTES.toMillis(2)
+            maxWaitTime = TimeUnit.MINUTES.toMillis(5)
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
         }
+        Log.d("InitLoc","Success")
     }
 
     //Set the users location (latitude, longitude)
     @SuppressLint("MissingPermission")
     private fun getLocation(){
+        if(locationRequest == null){
+            initLocRequest()
+        }
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult?) {
                 super.onLocationResult(locationResult)
@@ -277,6 +274,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     currentLocation = locationResult.lastLocation
                     startLatitude = currentLocation?.latitude
                     startLongitude = currentLocation?.longitude
+                    startLatitude?.let { it1 -> startLongitude?.let { it2 -> goToLocation(it1, it2) } }
+                    //Add marker
+                    try {
+                        var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
+                        mMap.addMarker(MarkerOptions().position(latlng).title(startAddress))
+                    }catch (e:NullPointerException){
+                        Log.d("FAB Error", "Try again")
+                    }
                 } ?: run {
                     Log.d("Main", "Location information isn't available.")
                 }
@@ -488,7 +493,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     override fun onSaveInstanceState(savedInstanceState: Bundle) {
         super.onSaveInstanceState(savedInstanceState)
         Log.i(TAG, "onSaveInstanceState")
-        removeLocationUpdateCallbacks()
         savedInstanceState.putString("mpg", mpg)
         savedInstanceState.putString("gas", gasPrice)
 
