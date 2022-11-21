@@ -111,16 +111,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         //Set Observers to update MPG/Gas Price if changed
         viewmodel.getMPG().observe(this) { item: String? ->
             mpg = item
-            lifecycleScope.launch{
-                save("mpg", mpg!!)
-            }
+
             Log.d("observer", mpg!!)
         }
         viewmodel.getGasPrice().observe(this) { item: String? ->
             gasPrice = item
-            lifecycleScope.launch{
-                save("gas", gasPrice!!)
-            }
+
         }
 
         binding.locationFab.setOnClickListener{
@@ -161,6 +157,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             when(it.itemId){
                 R.id.miItem1 ->{
                     supportFragmentManager.popBackStack()
+                    lifecycleScope.launch(){
+                        save("mpg",mpg!!)
+                        save("gas",gasPrice!!)
+                        Log.d("savedd", read("mpg")!!)
+                    }
                 }
 
                 R.id.miItem2 ->{
