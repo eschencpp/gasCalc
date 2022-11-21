@@ -13,17 +13,22 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.preferencesKey
 import androidx.datastore.preferences.createDataStore
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.get
 import com.example.gascalc.databinding.FragmentSettingsBinding
 import androidx.lifecycle.lifecycleScope
+import kotlinx.android.synthetic.main.fragment_settings.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment() {
 
     //View Binding
+    private lateinit var viewmodel : sharedViewModel
     private var _binding: FragmentSettingsBinding? = null
     private val binding get() = _binding!!
-
+    private  var gMPG : String? = null
+    private  var gasPrice : String? = null
     private lateinit var dataStore: DataStore<Preferences>
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,11 +38,17 @@ class SettingsFragment : Fragment() {
         }
         dataStore = context?.createDataStore(name = "settings")!!
 
-
-
+        lifecycleScope.launch(){
+            if(read("mpg") != null){
+                gMPG = read("mpg")
+                binding.enterMPG.setText(read("mpg") + "  MPG")
+            }
+            if(read("gas") != null){
+                gasPrice = read("gas")
+                binding.gasPriceText.setText(read("gas" ) + "  $/gallon")
+            }
+        }
     }
-
-
 
     private suspend fun save(key : String, value:String){
         val dataStoreKey = preferencesKey<String>(key)
@@ -57,30 +68,54 @@ class SettingsFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+        viewmodel = ViewModelProvider(requireActivity()).get(sharedViewModel::class.java)
         _binding = FragmentSettingsBinding.inflate(inflater, container, false)
         val view = binding.root
-        binding.saveButton.setOnClickListener{
+
+        binding.enterMPG.setOnFocusChangeListener{ _, hasFocus ->
+            if (hasFocus)
+                enterMPG.setText("")
+            else
+                enterMPG.setText(gMPG+"  MPG")
+        }
+
+        binding.gasPriceText.setOnFocusChangeListener{ _, hasFocus ->
+            if (hasFocus)
+                binding.gasPriceText.setText("")
+            else
+                binding.gasPriceText.setText(gasPrice+"  $/gallon")
+        }
+
+        binding.saveMPGButton.setOnClickListener{
             lifecycleScope.launch{
                 save(
                     "mpg",
                     binding.enterMPG.text.toString()
                 )
                 val Tmpg = read("mpg")
+
+                viewmodel.setMPG(read("mpg")!!)
                 Toast.makeText(activity,"Your MPG is: $Tmpg",Toast.LENGTH_LONG).show()
             }
 
         }
 
-        binding.readMPGButton.setOnClickListener {
+        binding.saveGasButton.setOnClickListener {
             lifecycleScope.launch{
-                val x  = read("mpg")
-                Log.d("TAG", "The value is $x")
-                //Toast.makeText(activity.applicationContext,"Your MPG is:",Toast.LENGTH_LONG)
+                save(
+                    "gas",
+                    binding.gasPriceText.text.toString()
+                )
+                viewmodel.setGasPrice(read("gas")!!)
             }
 
         }
         return view
 
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
     }
 
     override fun onDestroyView() {

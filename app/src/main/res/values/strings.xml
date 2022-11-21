@@ -1,9 +1,11 @@
 <resources>
     <string name="app_name">GasCalc</string>
-    <string name="title_activity_maps">MapsActivity</string>
+    <string name="title_activity_maps">GasCalc</string>
     <string name="open">Open</string>
     <string name="close">Close</string>
     <string name="tripCost">Trip Cost</string>
+    <string name="startlocation">Start Location</string>
+    <string name="endlocation">Destination</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>
