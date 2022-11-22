@@ -122,8 +122,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         }
 
         binding.locationFab.setOnClickListener{
+            if(fusedLocationProviderClient == null){
+                Log.d("FusedNUll", "Fused is null")
+            }
             getLocation()
-
             //Set start address to user location
             lifecycleScope.launch{
                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
@@ -167,17 +169,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 }
 
                 R.id.miItem2 ->{
-                    var x = supportFragmentManager.findFragmentByTag("Settings")
+                    val x = supportFragmentManager.findFragmentByTag("list")
                     if (x != null) {
-                        supportFragmentManager.beginTransaction()
-                            .show(x)
+                        Log.d(TAG,"Fragment already exists")
                     }
-                    Log.d("fragmpop", x.toString())
+
                     if (x == null) {
                         supportFragmentManager.beginTransaction()
-                            .replace(R.id.map, SettingsFragment.newInstance())
-                            .addToBackStack("Settings").commit()
+                            .replace(R.id.map, SettingsFragment.newInstance(),"list")
+                            .addToBackStack("list").commit()
                         supportFragmentManager.beginTransaction().setReorderingAllowed(true)
+                        Log.d(TAG,"Fragment not exists")
                     }
                 }
             }
@@ -233,6 +235,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 end_loc_text.setText(destAddress)
                 lifecycleScope.launch{
                     toLatLng(end_loc_text.text.toString(),1)
+                    delay(1000L)
+                    toLocation(destLatitude.toString(),destLongitude.toString(),1)
+                    Log.d("setDestAddrr", destAddress)
                 }
                 true
             } else {
@@ -347,11 +352,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-
-        // Add a marker in Sydney and move the camera
-        //val sydney = LatLng(-34.0, 151.0)
-        //mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        //mMap.setOnMarkerClickListener(this);
     }
 
     override fun onMarkerClick(p0: Marker): Boolean {
@@ -436,6 +436,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     this@MapsActivity.runOnUiThread(java.lang.Runnable {
                         if(flag == 1){
                             destAddress = formatString
+                            end_loc_text.setText(destAddress)
                         }else {
                             startAddress = formatString
                         }
