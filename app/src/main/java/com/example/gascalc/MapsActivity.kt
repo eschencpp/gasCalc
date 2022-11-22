@@ -125,6 +125,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             if(fusedLocationProviderClient == null){
                 Log.d("FusedNUll", "Fused is null")
             }
+            if(locationRequest == null){
+                initLocRequest()
+            }
             getLocation()
             //Set start address to user location
             lifecycleScope.launch{
