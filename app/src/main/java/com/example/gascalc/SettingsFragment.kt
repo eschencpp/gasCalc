@@ -41,11 +41,11 @@ class SettingsFragment : Fragment() {
         lifecycleScope.launch(){
             if(read("mpg") != null){
                 gMPG = read("mpg")
-                binding.enterMPG.setText(read("mpg"))
+                binding.enterMPG.setText(read("mpg") + "  MPG")
             }
             if(read("gas") != null){
                 gasPrice = read("gas")
-                binding.gasPriceText.setText(read("gas" ))
+                binding.gasPriceText.setText(read("gas" ) + "  $/gallon")
             }
         }
     }
@@ -87,33 +87,40 @@ class SettingsFragment : Fragment() {
         }
 
         binding.saveMPGButton.setOnClickListener{
-            lifecycleScope.launch{
-                save(
-                    "mpg",
-                    binding.enterMPG.text.toString()
-                )
-                gMPG = read("mpg")
-                binding.enterMPG.setText(gMPG + "  MPG")
-                viewmodel.setMPG(read("mpg")!!)
-                Toast.makeText(activity,"Your MPG is: $gMPG",Toast.LENGTH_LONG).show()
+            if(binding.enterMPG.text.toString() != ""
+                && isNumeric(binding.enterMPG.text.toString())) {
+                lifecycleScope.launch {
+                    save(
+                        "mpg",
+                        binding.enterMPG.text.toString()
+                    )
+                    gMPG = read("mpg")
+                    binding.enterMPG.setText(gMPG + "  MPG")
+                    viewmodel.setMPG(read("mpg")!!)
+                    Toast.makeText(activity, "Your MPG is: $gMPG", Toast.LENGTH_LONG).show()
+                }
             }
-
         }
 
         binding.saveGasButton.setOnClickListener {
-            lifecycleScope.launch{
-                save(
-                    "gas",
-                    binding.gasPriceText.text.toString()
-                )
-                gasPrice = read("gas")
-                binding.gasPriceText.setText(gasPrice + "  $/gallon")
-                viewmodel.setGasPrice(read("gas")!!)
+            if(binding.gasPriceText.text.toString() != ""
+                && isNumeric(binding.gasPriceText.text.toString()) ) {
+                lifecycleScope.launch {
+                    save(
+                        "gas",
+                        binding.gasPriceText.text.toString()
+                    )
+                    gasPrice = read("gas")
+                    binding.gasPriceText.setText(gasPrice + "  $/gallon")
+                    viewmodel.setGasPrice(read("gas")!!)
+                }
             }
-
         }
         return view
+    }
 
+    private fun isNumeric(str : String): Boolean{
+        return str.toDoubleOrNull() != null
     }
 
 

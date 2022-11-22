@@ -59,6 +59,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.preferencesKey
 import androidx.datastore.preferences.createDataStore
 import androidx.fragment.app.FragmentManager
+import kotlinx.android.synthetic.main.activity_maps.*
 import kotlinx.coroutines.flow.first
 
 
@@ -169,6 +170,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         save("gas",gasPrice!!)
                         Log.d("savedd", read("mpg")!!)
                     }
+                    drawerLayout.closeDrawers()
                 }
 
                 R.id.miItem2 ->{
@@ -184,6 +186,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         supportFragmentManager.beginTransaction().setReorderingAllowed(true)
                         Log.d(TAG,"Fragment not exists")
                     }
+                    drawerLayout.closeDrawers()
                 }
             }
             true
