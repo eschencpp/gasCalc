@@ -41,11 +41,11 @@ class SettingsFragment : Fragment() {
         lifecycleScope.launch(){
             if(read("mpg") != null){
                 gMPG = read("mpg")
-                binding.enterMPG.setText(read("mpg") + "  MPG")
+                binding.enterMPG.setText(read("mpg"))
             }
             if(read("gas") != null){
                 gasPrice = read("gas")
-                binding.gasPriceText.setText(read("gas" ) + "  $/gallon")
+                binding.gasPriceText.setText(read("gas" ))
             }
         }
     }
@@ -76,14 +76,14 @@ class SettingsFragment : Fragment() {
             if (hasFocus)
                 enterMPG.setText("")
             else
-                enterMPG.setText(gMPG+"  MPG")
+                enterMPG.setText(gMPG + "  MPG")
         }
 
         binding.gasPriceText.setOnFocusChangeListener{ _, hasFocus ->
             if (hasFocus)
                 binding.gasPriceText.setText("")
             else
-                binding.gasPriceText.setText(gasPrice+"  $/gallon")
+                binding.gasPriceText.setText(gasPrice + "  $/gallon")
         }
 
         binding.saveMPGButton.setOnClickListener{
@@ -92,10 +92,10 @@ class SettingsFragment : Fragment() {
                     "mpg",
                     binding.enterMPG.text.toString()
                 )
-                val Tmpg = read("mpg")
-
+                gMPG = read("mpg")
+                binding.enterMPG.setText(gMPG + "  MPG")
                 viewmodel.setMPG(read("mpg")!!)
-                Toast.makeText(activity,"Your MPG is: $Tmpg",Toast.LENGTH_LONG).show()
+                Toast.makeText(activity,"Your MPG is: $gMPG",Toast.LENGTH_LONG).show()
             }
 
         }
@@ -106,6 +106,8 @@ class SettingsFragment : Fragment() {
                     "gas",
                     binding.gasPriceText.text.toString()
                 )
+                gasPrice = read("gas")
+                binding.gasPriceText.setText(gasPrice + "  $/gallon")
                 viewmodel.setGasPrice(read("gas")!!)
             }
 
@@ -114,9 +116,6 @@ class SettingsFragment : Fragment() {
 
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-    }
 
     override fun onDestroyView() {
         super.onDestroyView()

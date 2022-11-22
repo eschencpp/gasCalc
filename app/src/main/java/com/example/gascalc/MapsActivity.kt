@@ -52,6 +52,7 @@ import okhttp3.internal.format
 import kotlin.math.roundToInt
 import android.view.View
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -93,6 +94,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private lateinit var dataStore: DataStore<Preferences>
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         super.onCreate(savedInstanceState)
         dataStore = createDataStore(name = "data")!!
         binding = ActivityMapsBinding.inflate(layoutInflater)
@@ -111,21 +113,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         //Set Observers to update MPG/Gas Price if changed
         viewmodel.getMPG().observe(this) { item: String? ->
             mpg = item
-            lifecycleScope.launch{
-                save("mpg", mpg!!)
-            }
+
             Log.d("observer", mpg!!)
         }
         viewmodel.getGasPrice().observe(this) { item: String? ->
             gasPrice = item
-            lifecycleScope.launch{
-                save("gas", gasPrice!!)
-            }
+
         }
 
         binding.locationFab.setOnClickListener{
+            if(fusedLocationProviderClient == null){
+                Log.d("FusedNUll", "Fused is null")
+            }
+            if(locationRequest == null){
+                initLocRequest()
+            }
             getLocation()
-
             //Set start address to user location
             lifecycleScope.launch{
                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
@@ -161,20 +164,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             when(it.itemId){
                 R.id.miItem1 ->{
                     supportFragmentManager.popBackStack()
+                    lifecycleScope.launch(){
+                        save("mpg",mpg!!)
+                        save("gas",gasPrice!!)
+                        Log.d("savedd", read("mpg")!!)
+                    }
                 }
 
                 R.id.miItem2 ->{
-                    var x = supportFragmentManager.findFragmentByTag("Settings")
+                    val x = supportFragmentManager.findFragmentByTag("list")
                     if (x != null) {
-                        supportFragmentManager.beginTransaction()
-                            .show(x)
+                        Log.d(TAG,"Fragment already exists")
                     }
-                    Log.d("fragmpop", x.toString())
+
                     if (x == null) {
                         supportFragmentManager.beginTransaction()
-                            .replace(R.id.map, SettingsFragment.newInstance())
-                            .addToBackStack("Settings").commit()
+                            .replace(R.id.map, SettingsFragment.newInstance(),"list")
+                            .addToBackStack("list").commit()
                         supportFragmentManager.beginTransaction().setReorderingAllowed(true)
+                        Log.d(TAG,"Fragment not exists")
                     }
                 }
             }
@@ -230,6 +238,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 end_loc_text.setText(destAddress)
                 lifecycleScope.launch{
                     toLatLng(end_loc_text.text.toString(),1)
+                    delay(1000L)
+                    toLocation(destLatitude.toString(),destLongitude.toString(),1)
+                    Log.d("setDestAddrr", destAddress)
                 }
                 true
             } else {
@@ -344,11 +355,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
-
-        // Add a marker in Sydney and move the camera
-        //val sydney = LatLng(-34.0, 151.0)
-        //mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        //mMap.setOnMarkerClickListener(this);
     }
 
     override fun onMarkerClick(p0: Marker): Boolean {
@@ -433,6 +439,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     this@MapsActivity.runOnUiThread(java.lang.Runnable {
                         if(flag == 1){
                             destAddress = formatString
+                            end_loc_text.setText(destAddress)
                         }else {
                             startAddress = formatString
                         }
