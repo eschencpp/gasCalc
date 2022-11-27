@@ -124,16 +124,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
         binding.locationFab.setOnClickListener{
             if(fusedLocationProviderClient == null){
+                fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
                 Log.d("FusedNUll", "Fused is null")
             }
             if(locationRequest == null){
                 initLocRequest()
+                getLocation()
+            }else {
+                getLocation()
             }
-            getLocation()
             //Set start address to user location
             lifecycleScope.launch{
+                delay(1000L)
                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
             }
+
+
         }
 
         //Bottom sliding menu
@@ -432,7 +438,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             }
             override fun onResponse(call: Call, response: Response) {
                 response.use {
-                    if (!response.isSuccessful) throw IOException("Unexpected code $response")
+                    if (!response.isSuccessful) {
+                        throw IOException("Unexpected code $response")
+                        Toast.makeText(this@MapsActivity, "Error could not find location."
+                            , Toast.LENGTH_LONG).show()
+                    }
 
                     var json = JSONObject(response.body!!.string())
                     val results = json["results"] as JSONArray
@@ -443,6 +453,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         if(flag == 1){
                             destAddress = formatString
                             end_loc_text.setText(destAddress)
+                            Toast.makeText(this@MapsActivity, "Destination set to:\n$destAddress"
+                                , Toast.LENGTH_LONG).show()
                         }else {
                             startAddress = formatString
                         }

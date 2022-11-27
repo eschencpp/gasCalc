@@ -97,7 +97,7 @@ class SettingsFragment : Fragment() {
                     gMPG = read("mpg")
                     binding.enterMPG.setText(gMPG + "  MPG")
                     viewmodel.setMPG(read("mpg")!!)
-                    Toast.makeText(activity, "Your MPG is: $gMPG", Toast.LENGTH_LONG).show()
+                    Toast.makeText(activity, "MPG set to: $gMPG", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -113,6 +113,7 @@ class SettingsFragment : Fragment() {
                     gasPrice = read("gas")
                     binding.gasPriceText.setText(gasPrice + "  $/gallon")
                     viewmodel.setGasPrice(read("gas")!!)
+                    Toast.makeText(activity, "Gas Price set to: $gasPrice", Toast.LENGTH_LONG).show()
                 }
             }
         }
