@@ -59,6 +59,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.preferencesKey
 import androidx.datastore.preferences.createDataStore
 import androidx.fragment.app.FragmentManager
+import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.android.synthetic.main.activity_maps.*
 import kotlinx.coroutines.flow.first
 
@@ -90,6 +91,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private var distancee : Double? = null
     private var gasPrice : String? = null
     private var mpg : String? = null
+    private lateinit var startMarker: Marker
+    private var destMarker : Marker? = null
     //Viewmodel
     private val viewmodel: sharedViewModel by viewModels()
     private lateinit var dataStore: DataStore<Preferences>
@@ -146,6 +149,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         binding.calcButton.setOnClickListener {
             setDialog()
         }
+
+
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
@@ -298,7 +304,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     //Add marker
                     try {
                         var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
-                        mMap.addMarker(MarkerOptions().position(latlng).title(startAddress))
+                        startMarker = mMap.addMarker(MarkerOptions().position(latlng).title(startAddress))
                     }catch (e:NullPointerException){
                         Log.d("FAB Error", "Try again")
                     }
@@ -455,8 +461,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                             end_loc_text.setText(destAddress)
                             Toast.makeText(this@MapsActivity, "Destination set to:\n$destAddress"
                                 , Toast.LENGTH_LONG).show()
+                            destMarker!!.title = destAddress
                         }else {
                             startAddress = formatString
+                            startMarker.title = startAddress
                         }
                     })
                     Log.d("OnResponse", formatString )
@@ -476,6 +484,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         Log.d("apilink",urlMap)
         client.newCall(request).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
+
                 e.printStackTrace()
             }
             override fun onResponse(call: Call, response: Response) {
@@ -486,6 +495,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     val results = json["results"] as JSONArray
                     if(results.length() == 0){
                         Log.d("Not found","Not found")
+
                         return
                     }
                     val resultObj = results[0] as JSONObject
@@ -496,15 +506,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
 
                     this@MapsActivity.runOnUiThread(java.lang.Runnable {
                         if(flag == 1) {
+                            //Remove previous marker if null
+                            if(destMarker != null){
+                                destMarker!!.remove()
+                            }
+
                             destLatitude = lati
                             destLongitude = longi
+
+                            //Add marker to the map
+                            var latlng : LatLng = LatLng(destLatitude!!, destLongitude!!)
+                            destMarker = mMap.addMarker(MarkerOptions().position(latlng))
+                            mMap.addPolyline(
+                                PolylineOptions()
+                                .clickable(true)
+                                .add(
+                                    LatLng(startLatitude!!, startLongitude!!),
+                                    LatLng(destLatitude!!,destLongitude!!)))
+
                             Log.d(
                                 "LatLng",
                                 destLatitude.toString() + ", " + destLongitude.toString()
                             )
+                            lifecycleScope.launch{
+                                toLocation(destLatitude.toString(),destLongitude.toString(),1)
+                            }
                         } else{
                             startLatitude = lati
                             startLongitude = longi
+                            lifecycleScope.launch{
+                                toLocation(startLatitude.toString(),startLongitude.toString(),0)
+                            }
                         }
                     })
                 }
