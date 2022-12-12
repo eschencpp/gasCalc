@@ -1,6 +1,5 @@
 package com.example.gascalc
 
-
 import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
@@ -24,10 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.gascalc.databinding.ActivityMapsBinding
 import com.google.android.gms.location.*
 import com.google.android.gms.maps.*
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
-import com.google.android.gms.maps.model.PolylineOptions
+import com.google.android.gms.maps.model.*
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionDeniedResponse
@@ -42,6 +38,7 @@ import okhttp3.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.lang.Exception
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
@@ -67,13 +64,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     private var distancee : Double? = null
     private var gasPrice : String? = null
     private var mpg : String? = null
-    private lateinit var startMarker: Marker
+    private var startMarker: Marker? = null
     private var destMarker : Marker? = null
     //Viewmodel
     private val viewmodel: sharedViewModel by viewModels()
     private val dialogViewmodel: DialogViewModel by viewModels()
     private lateinit var dataStore: DataStore<Preferences>
     private val dialogFrag : DialogFragment = DialogFragment()
+    private var polyLine : Polyline? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         //Disable night theme
@@ -201,18 +199,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     currentLocation = locationResult.lastLocation
                     startLatitude = currentLocation?.latitude
                     startLongitude = currentLocation?.longitude
-
+                    if(startMarker == null){
+                        var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
+                        startMarker = mMap.addMarker(MarkerOptions().position(latlng))
+                    }
                     dialogViewmodel.setStartLatitude(startLatitude!!)
                     dialogViewmodel.setStartLong(startLongitude!!)
 
                     startLatitude?.let { it1 -> startLongitude?.let { it2 -> goToLocation(it1, it2) } }
-                    //Add marker
-                    try {
-                        var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
-                        startMarker = mMap.addMarker(MarkerOptions().position(latlng).title(startAddress))
-                    }catch (e:NullPointerException){
-                        Log.d("FAB Error", "Try again")
-                    }
                 } ?: run {
                     Log.d("Main", "Location information isn't available.")
                 }
@@ -237,8 +231,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         Dexter.withContext(this).withPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
             .withListener(object : PermissionListener{
                 override fun onPermissionGranted(p0: PermissionGrantedResponse?) {
-                    Toast.makeText(this@MapsActivity, "Location Enabled", Toast.LENGTH_LONG)
-                        .show()
+                    var firstRun = viewmodel.getFirstRun().value
+                    if(firstRun == true){
+                        Toast.makeText(this@MapsActivity, "Location Enabled", Toast.LENGTH_LONG)
+                            .show()
+                        viewmodel.setFirstRun(false)
+                    }
                 }
 
                 override fun onPermissionDenied(p0: PermissionDeniedResponse?) {
@@ -308,6 +306,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             override fun onFailure(call: Call, e: IOException) {
                 e.printStackTrace()
             }
+            //Parse json
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!response.isSuccessful) throw IOException("Unexpected code $response")
@@ -322,15 +321,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     val dist = distanceData["value"].toString().toDouble()
                     val distMile : Double = (dist/1000)* 0.62137
                     Log.d("Dist", distMile.toString() )
+                    //Set distance and gas cost in viewmodel
                     this@MapsActivity.runOnUiThread(java.lang.Runnable {
                         distancee = ((distMile*10).roundToInt().toDouble())/10
                         dialogViewmodel.setDistance(distancee!!)
                         var viewmodelDist : Double = dialogViewmodel.getDistance().value!!
-                        //dialogFrag.distanceT.setText(viewmodelDist.toString() +" Miles")
 
-                        var cost = ((viewmodelDist!!/(mpg?.toDouble()!!) * gasPrice?.toDouble()!!)*100).roundToInt().toDouble()/100
-                        dialogViewmodel.setGasPrice(cost.toString())
-                        //dialogFrag.costT.setText(dialogViewmodel.getGasPrice().value)
+                        try{
+                            var cost = ((viewmodelDist/(mpg?.toDouble()!!) * gasPrice?.toDouble()!!)*100).roundToInt().toDouble()/100
+                            dialogViewmodel.setGasPrice(cost.toString())
+                        }catch (e : Exception){
+                            Toast.makeText(this@MapsActivity, "Please set MPG and Gas Price in Settings."
+                                , Toast.LENGTH_LONG).show()
+                        }
                     })
                 }
             }
@@ -341,6 +344,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     suspend fun toLocation(lat: String, long: String, flag: Int) {
         var formatString = ""
         val latlng = lat + "," + long
+        //API url
         val urlMap = "https://maps.googleapis.com/maps/api/geocode/json?latlng=${latlng}" +
                 "&key=${API_KEY}"
         val request = Request.Builder()
@@ -351,6 +355,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
             override fun onFailure(call: Call, e: IOException) {
                 e.printStackTrace()
             }
+            //Parse json
             override fun onResponse(call: Call, response: Response) {
                 response.use {
                     if (!response.isSuccessful) {
@@ -362,20 +367,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     val resultsObj = results[0] as JSONObject
                     formatString = resultsObj["formatted_address"] as String
 
+                    //Set destination address
                     this@MapsActivity.runOnUiThread(java.lang.Runnable {
                         if(flag == 1){
                             destAddress = formatString
                             dialogViewmodel.setDestAddr(destAddress)
-                            dialogFrag.end_loc_text.setText(dialogViewmodel.getdestAddr().value)
                             Toast.makeText(this@MapsActivity, "Destination set to:\n$destAddress"
                                 , Toast.LENGTH_SHORT).show()
                             destMarker!!.title = destAddress
+                        //Set starting location address
                         }else {
                             startAddress = formatString
                             dialogViewmodel.setStartAddr(startAddress)
                             Toast.makeText(this@MapsActivity, "Start location set to:\n${dialogViewmodel.getStartAddr().value}"
                                 , Toast.LENGTH_SHORT).show()
-                            startMarker.title = startAddress
+                            if(startMarker != null){
+                                startMarker!!.title = startAddress
+                            }
                         }
                     })
                     Log.d("OnResponse", formatString )
@@ -426,7 +434,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                             if(destMarker != null){
                                 destMarker!!.remove()
                             }
-
                             destLatitude = lati
                             destLongitude = longi
                             dialogViewmodel.setDestLatitude(destLatitude!!)
@@ -434,13 +441,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                             //Add marker to the map
                             var latlng : LatLng = LatLng(destLatitude!!, destLongitude!!)
                             destMarker = mMap.addMarker(MarkerOptions().position(latlng))
-                            mMap.addPolyline(
-                                PolylineOptions()
-                                .clickable(true)
-                                .add(
-                                    LatLng(startLatitude!!, startLongitude!!),
-                                    LatLng(destLatitude!!,destLongitude!!)))
-
+                            drawPolyLine()
                             Log.d(
                                 "LatLng",
                                 destLatitude.toString() + ", " + destLongitude.toString()
@@ -450,10 +451,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                             }
                         } else{
                             //Call start location of method
+                            if(startMarker != null){
+                                startMarker!!.remove()
+                            }
                             startLatitude = lati
                             startLongitude = longi
                             dialogViewmodel.setStartLatitude(startLatitude!!)
                             dialogViewmodel.setStartLong(startLongitude!!)
+                            var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
+                            startMarker = mMap.addMarker(MarkerOptions().position(latlng))
+                            drawPolyLine()
                             lifecycleScope.launch{
                                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
                             }
@@ -464,12 +471,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         })
     }
 
-    override fun onSaveInstanceState(savedInstanceState: Bundle) {
-        super.onSaveInstanceState(savedInstanceState)
-        Log.i(TAG, "onSaveInstanceState")
-        savedInstanceState.putString("mpg", mpg)
-        savedInstanceState.putString("gas", gasPrice)
+    private fun drawPolyLine(){
+        if(polyLine != null){
+            polyLine?.remove()
+        }
+        polyLine = mMap.addPolyline(
+            PolylineOptions()
+                .clickable(true)
+                .add(
+                    LatLng(startLatitude!!, startLongitude!!),
+                    LatLng(destLatitude!!,destLongitude!!)))
     }
+
 
     //Save data in proto datastore
     private suspend fun save(key : String, value:String){

@@ -75,6 +75,7 @@ class DialogFragment : DialogFragment() {
         distanceT  = binding.distanceText
         costT = binding.costText
 
+        //Automatically erase text field when selected
         start_loc_text.setOnFocusChangeListener{ _, hasFocus ->
             if (hasFocus)
                 start_loc_text.setText("")
@@ -82,6 +83,7 @@ class DialogFragment : DialogFragment() {
                 start_loc_text.setText(viewmodel.getStartAddr().value)
         }
 
+        //Set listener for enter button on start location text area
         start_loc_text.setOnEditorActionListener { v, actionId, event ->
             if(actionId == EditorInfo.IME_ACTION_NEXT){
                 viewmodel.setStartAddr(start_loc_text.text.toString())
@@ -89,8 +91,8 @@ class DialogFragment : DialogFragment() {
                 start_loc_text.setText(startAddress)
                 lifecycleScope.launch{
                     (activity as MapsActivity).toLatLng(start_loc_text.text.toString(),0)
-                    startAddress = viewmodel.getStartAddr().value!!
                     delay(1000L)
+                    startAddress = viewmodel.getStartAddr().value!!
                     start_loc_text.setText(startAddress)
                 }
                 true
@@ -99,7 +101,7 @@ class DialogFragment : DialogFragment() {
             }
         }
 
-
+        //Automatically erase text field when selected
         end_loc_text.setOnFocusChangeListener(){_, hasFocus ->
             if (hasFocus)
                 end_loc_text.setText("")
@@ -107,6 +109,7 @@ class DialogFragment : DialogFragment() {
                 end_loc_text.setText(viewmodel.getdestAddr().value)
         }
 
+        //Set listener for enter button on dest location text area
         end_loc_text.setOnEditorActionListener { v, actionId, event ->
             if(actionId == EditorInfo.IME_ACTION_DONE){
                 //Set dest address in viewmodel
@@ -117,7 +120,8 @@ class DialogFragment : DialogFragment() {
                 lifecycleScope.launch{
                     (activity as MapsActivity).toLatLng(end_loc_text.text.toString(),1)
                     delay(1000L)
-                    Log.d("setDestAddrr", destAddress)
+                    destAddress = viewmodel.getdestAddr().value!!
+                    end_loc_text.setText(destAddress)
                 }
                 true
             } else {
@@ -125,6 +129,7 @@ class DialogFragment : DialogFragment() {
             }
         }
 
+        //Calculate button functionality
         calc_button.setOnClickListener {
             startLatitude = viewmodel.getStartLatitude().value
             startLongitude = viewmodel.getStartLong().value
@@ -138,15 +143,20 @@ class DialogFragment : DialogFragment() {
                 lifecycleScope.launch{
                     var updated = false
                     var counter = 0
-                    while(updated == false && counter < 12){
+                    while(updated == false && counter < 15){
                         //Poll every 750ms
                         delay(750L)
-                        //If load time is long, slow down polling to once every 10 seconds
-                        if(counter > 7){
-                            delay(10000L)
+                        //If load time is long, slow down polling to once every 6 seconds
+                        if(counter > 8){
+                            delay(6000L)
                         }
+                        var oldDistance = distanceT.text
                         distanceT.setText(viewmodel.getDistance().value.toString() + " Miles")
                         costT.setText(viewmodel.getGasPrice().value)
+
+                        if(oldDistance != distanceT.text){
+                            updated = true
+                        }
                         counter += 1
                     }
                 }
@@ -154,6 +164,4 @@ class DialogFragment : DialogFragment() {
         }
     }
 
-    companion object {
-    }
 }
