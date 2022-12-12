@@ -128,8 +128,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 delay(1000L)
                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
                 delay(500L)
-                startMarker = addMarker(startLatitude!!,startLongitude!!,startMarker)
-                startMarker?.title = "Your Location"
+                try{
+                    startMarker = addMarker(startLatitude!!,startLongitude!!,startMarker)
+                    startMarker?.title = "Your Location"
+                }catch (e : Exception){
+                    Toast.makeText(this@MapsActivity,
+                        "Please restart app to allow locate functionality.", Toast.LENGTH_SHORT)
+                            .show()
+                }
                 drawPolyLine()
             }
         }

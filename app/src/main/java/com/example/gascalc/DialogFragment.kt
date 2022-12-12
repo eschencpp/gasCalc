@@ -46,6 +46,8 @@ class DialogFragment : DialogFragment() {
         setDialog()
         start_loc_text.setText(viewmodel.getStartAddr().value)
         end_loc_text.setText(viewmodel.getdestAddr().value)
+        distanceT.setText(viewmodel.getDistance().value.toString() + "  Miles")
+        costT.setText(viewmodel.getGasPrice().value)
         dialog?.show()
         dialog?.window?.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         dialog?.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
