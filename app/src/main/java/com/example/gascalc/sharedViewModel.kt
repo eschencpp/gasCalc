@@ -39,9 +39,4 @@ class sharedViewModel(val state : SavedStateHandle) : ViewModel() {
         return firstRun
     }
 
-    fun saveState(){
-        MPG.value = state["mpg"]
-        gas.value = state["gas"]
-    }
-
 }
