@@ -67,7 +67,7 @@ class DialogFragment : DialogFragment() {
         return super.onCreateDialog(savedInstanceState)
     }
 
-
+    //Setup dialog
     fun setDialog(){
         calc_button = binding.calButton
         start_loc_text = binding.editTextStartLocation

@@ -77,20 +77,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         //Disable night theme
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         super.onCreate(savedInstanceState)
-        dataStore = createDataStore(name = "data")!!
+        dataStore = createDataStore(name = "data")
         binding = ActivityMapsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-
-        //Update variables to saved state using datastore
-        lifecycleScope.launch(){
-            if(read("mpg") != null){
-                mpg = read("mpg")
-            }
-            if(read("gas") != null){
-                gasPrice = read("gas")
-            }
-        }
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
+        initVar()
+        setObservers()
+        setButtonListeners()
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
+        val mapFragment = supportFragmentManager
+            .findFragmentById(R.id.map) as SupportMapFragment
+        mapFragment.getMapAsync(this)
+        //Automatically get use location on launch
+        navMenu()
+        checkPermissions()
+        initLocRequest()
+        getLocation()
+    }
+
+    //Set value observers to update when value changed in settings
+    private fun setObservers(){
         //Set Observers to update MPG/Gas Price if changed
         viewmodel.getMPG().observe(this) { item: String? ->
             mpg = item
@@ -99,46 +105,42 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         viewmodel.getGasPrice().observe(this) { item: String? ->
             gasPrice = item
         }
+    }
 
+    //Update variables to saved state using datastore
+    private fun initVar(){
+        lifecycleScope.launch(){
+            if(read("mpg") != null){
+                mpg = read("mpg")
+            }
+            if(read("gas") != null){
+                gasPrice = read("gas")
+            }
+        }
+    }
+    private fun setButtonListeners(){
         //Get location button
         binding.locationFab.setOnClickListener{
-            if(fusedLocationProviderClient == null){
-                fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
-                Log.d("FusedNUll", "Fused is null")
-            }
-            if(locationRequest == null){
-                initLocRequest()
-                getLocation()
-            }else {
-                getLocation()
-            }
+            initLocRequest()
+            getLocation()
             //Set start address to user location
             lifecycleScope.launch{
                 delay(1000L)
                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
+                delay(500L)
+                startMarker = addMarker(startLatitude!!,startLongitude!!,startMarker)
+                startMarker?.title = "Your Location"
+                drawPolyLine()
             }
         }
-
         //Bottom sliding menu button
         binding.calcButton.setOnClickListener {
             dialogFrag.show(supportFragmentManager,"dialogFrag")
         }
-
-        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        val mapFragment = supportFragmentManager
-            .findFragmentById(R.id.map) as SupportMapFragment
-        mapFragment.getMapAsync(this)
-
-        //Automatically get use location on launch
-        navMenu()
-        checkPermissions()
-        initLocRequest()
-        getLocation()
     }
 
     //Create navigation menu on toolbar
-    fun navMenu(){
-        //Nav Menu
+    private fun navMenu(){
         toggle = ActionBarDrawerToggle(this,binding.drawerLayout, R.string.open, R.string.close)
         binding.drawerLayout.addDrawerListener(toggle)
         toggle.syncState()
@@ -176,7 +178,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     }
 
     //Initialize the location request
-    fun initLocRequest(){
+    private fun initLocRequest(){
         locationRequest = LocationRequest().apply {
             interval = TimeUnit.SECONDS.toMillis(60)
             fastestInterval = TimeUnit.SECONDS.toMillis(30)
@@ -189,9 +191,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     //Set the users location (latitude, longitude)
     @SuppressLint("MissingPermission")
     private fun getLocation(){
-        if(locationRequest == null){
-            initLocRequest()
-        }
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult?) {
                 super.onLocationResult(locationResult)
@@ -205,10 +204,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     }
                     dialogViewmodel.setStartLatitude(startLatitude!!)
                     dialogViewmodel.setStartLong(startLongitude!!)
-
+                    Log.d("getLocation()", "Request Successful")
                     startLatitude?.let { it1 -> startLongitude?.let { it2 -> goToLocation(it1, it2) } }
                 } ?: run {
-                    Log.d("Main", "Location information isn't available.")
                 }
             }
         }
@@ -226,8 +224,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         mMap.moveCamera(cameraupdate)
     }
 
+    private fun removeLocationUpdateCallbacks() {
+        val removeTask = fusedLocationProviderClient.removeLocationUpdates(locationCallback)
+        removeTask.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.d(TAG, "Location Callback removed.")
+            } else {
+                Log.d(TAG, "Failed to remove Location Callback.")
+            }
+        }
+    }
     //Check if location permission enabled
-    fun checkPermissions(){
+    private fun checkPermissions(){
         Dexter.withContext(this).withPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
             .withListener(object : PermissionListener{
                 override fun onPermissionGranted(p0: PermissionGrantedResponse?) {
@@ -238,12 +246,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         viewmodel.setFirstRun(false)
                     }
                 }
-
                 override fun onPermissionDenied(p0: PermissionDeniedResponse?) {
                     Toast.makeText(this@MapsActivity, "Location Permission Denied", Toast.LENGTH_LONG)
                         .show()
                 }
-
                 override fun onPermissionRationaleShouldBeShown(
                     p0: PermissionRequest?,
                     p1: PermissionToken?
@@ -251,7 +257,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                     Toast.makeText(this@MapsActivity, "Permission Granted", Toast.LENGTH_LONG)
                         .show()
                 }
-
             }).check()
     }
 
@@ -266,7 +271,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
      * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
      * If Google Play services is not installed on the device, the user will be prompted to install
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
@@ -278,17 +282,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
     override fun onMarkerClick(p0: Marker): Boolean {
         Toast.makeText(this, "My position",Toast.LENGTH_LONG).show()
         return false
-    }
-
-    private fun removeLocationUpdateCallbacks() {
-        val removeTask = fusedLocationProviderClient.removeLocationUpdates(locationCallback)
-        removeTask.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.d(TAG, "Location Callback removed.")
-            } else {
-                Log.d(TAG, "Failed to remove Location Callback.")
-            }
-        }
     }
 
     //Get API call to find distance
@@ -338,7 +331,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                 }
             }
         })
-
     }
     //Method to geocode LatLng to Location Name
     suspend fun toLocation(lat: String, long: String, flag: Int) {
@@ -431,16 +423,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                         //Flag used to call destination variation of method
                         if(flag == 1) {
                             //Remove previous marker if null
-                            if(destMarker != null){
-                                destMarker!!.remove()
-                            }
+
                             destLatitude = lati
                             destLongitude = longi
                             dialogViewmodel.setDestLatitude(destLatitude!!)
                             dialogViewmodel.setDestLong(destLongitude!!)
-                            //Add marker to the map
-                            var latlng : LatLng = LatLng(destLatitude!!, destLongitude!!)
-                            destMarker = mMap.addMarker(MarkerOptions().position(latlng))
+                            destMarker = addMarker(destLatitude!!,destLongitude!!,destMarker)
                             drawPolyLine()
                             Log.d(
                                 "LatLng",
@@ -451,15 +439,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
                             }
                         } else{
                             //Call start location of method
-                            if(startMarker != null){
-                                startMarker!!.remove()
-                            }
+
                             startLatitude = lati
                             startLongitude = longi
                             dialogViewmodel.setStartLatitude(startLatitude!!)
                             dialogViewmodel.setStartLong(startLongitude!!)
-                            var latlng : LatLng = LatLng(startLatitude!!, startLongitude!!)
-                            startMarker = mMap.addMarker(MarkerOptions().position(latlng))
+                            //Add Marker and draw PolyLine
+                            startMarker = addMarker(startLatitude!!, startLongitude!!,startMarker)
                             drawPolyLine()
                             lifecycleScope.launch{
                                 toLocation(startLatitude.toString(),startLongitude.toString(),0)
@@ -471,18 +457,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         })
     }
 
+    //Add marker on map
+    private fun addMarker(lati:Double,long:Double, markerName:Marker?): Marker? {
+        if(markerName != null){
+            markerName.remove()
+        }
+        val latlng : LatLng = LatLng(lati, long)
+        return mMap.addMarker(MarkerOptions().position(latlng))
+    }
+
+    //Draw line between markers
     private fun drawPolyLine(){
         if(polyLine != null){
             polyLine?.remove()
         }
-        polyLine = mMap.addPolyline(
-            PolylineOptions()
-                .clickable(true)
-                .add(
-                    LatLng(startLatitude!!, startLongitude!!),
-                    LatLng(destLatitude!!,destLongitude!!)))
+        if(startMarker != null && destMarker != null){
+            polyLine = mMap.addPolyline(
+                PolylineOptions()
+                    .clickable(true)
+                    .add(
+                        LatLng(startLatitude!!, startLongitude!!),
+                        LatLng(destLatitude!!,destLongitude!!)))
+        }
     }
-
 
     //Save data in proto datastore
     private suspend fun save(key : String, value:String){
@@ -498,5 +495,4 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMarker
         val preferences = dataStore.data.first()
         return preferences[dataStoreKey]
     }
-
 }

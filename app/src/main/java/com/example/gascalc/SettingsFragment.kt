@@ -50,6 +50,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    //Save values to data store
     private suspend fun save(key : String, value:String){
         val dataStoreKey = preferencesKey<String>(key)
         dataStore.edit { settings ->
@@ -57,6 +58,7 @@ class SettingsFragment : Fragment() {
         }
     }
 
+    //Get values from data store
     private suspend fun read(key : String): String?{
         val dataStoreKey = preferencesKey<String>(key)
         val preferences = dataStore.data.first()
@@ -123,7 +125,6 @@ class SettingsFragment : Fragment() {
     private fun isNumeric(str : String): Boolean{
         return str.toDoubleOrNull() != null
     }
-
 
     override fun onDestroyView() {
         super.onDestroyView()
